@@ -54,6 +54,13 @@ public class MessageConverter {
 
         try {
             Object bodyContent = source.getField(ActiveMqFieldName.BODY.toString());
+            String correlationId = (String)source.getField("correlationId");
+            int priority = (int)source.getField("priority");
+            int expiration = (int)source.getField("expiration");
+            Boolean persistent = (Boolean)source.getField("persistent");
+            String replyTo = (String)source.getField("replyTo");
+            String type = (String)source.getField("type");
+
             if (bodyContent instanceof String) {
                 String textContent = (String) bodyContent;
 
@@ -76,8 +83,17 @@ public class MessageConverter {
             else {
                 String className = bodyContent.getClass().getName();
                 String errorMessage = String.format(
-                        "unkown body content of type %s could not be converted to a JMS Message", className);
+                  "unkown body content of type %s could not be converted to a JMS Message", className);
                 logger.error(errorMessage);
+            }
+
+            if (message != null) {
+                message.setJMSCorrelationID(correlationId);
+                message.setJMSPriority(priority);
+                message.setJMSExpiration(expiration);
+                message.setBooleanProperty("persistent", persistent);
+                message.setJMSReplyTo(session.createQueue(replyTo));
+                message.setJMSType(type);
             }
         }
         catch (JMSException e) {
@@ -96,6 +112,7 @@ public class MessageConverter {
                 TextMessage textMessage = (TextMessage) source;
 
                 json.putString(ActiveMqFieldName.BODY.toString(), textMessage.getText());
+                json.putString("correlationId", textMessage.getJMSCorrelationID());
             }
             else if (source instanceof MapMessage) {
                 MapMessage mapMessage = (MapMessage) source;
@@ -113,7 +130,7 @@ public class MessageConverter {
             else {
                 String messageType = source.getClass().getName();
                 String errorMessage = String.format(
-                        "unkown JMS Message type %s could not be converted to a JsonObject", messageType);
+                  "unkown JMS Message type %s could not be converted to a JsonObject", messageType);
                 logger.error(errorMessage);
             }
         }
